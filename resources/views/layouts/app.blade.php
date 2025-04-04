@@ -13,6 +13,9 @@
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+        <!-- Dodaj bezpośredni link do Tailwind CSS, jeśli Vite nie działa -->
+        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     </head>
     <body class="font-sans antialiased">
         <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
@@ -32,5 +35,9 @@
                 {{ $slot }}
             </main>
         </div>
+
+        <!-- Scripts -->
+        <!-- <script src="{{ asset('js/app.js') }}" defer></script> -->
+        @stack('scripts')
     </body>
 </html>

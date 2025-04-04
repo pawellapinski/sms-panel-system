@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'sms_gateway' => [
+        'token' => env('SMS_GATEWAY_TOKEN'),
+    ],
+
 ];
