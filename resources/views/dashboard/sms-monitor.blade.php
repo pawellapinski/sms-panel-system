@@ -301,7 +301,10 @@
                 stickySms.style.maxWidth = '100%';
                 stickySms.style.margin = '0';
                 stickySms.style.borderRadius = '0';
-                stickySms.style.backgroundColor = 'rgba(238, 242, 255, 0.97)'; // Jaśniejszy indigo z przezroczystością
+                stickySms.style.backgroundColor = 'rgba(238, 242, 255, 0.85)'; // Zwiększona przezroczystość tła
+                stickySms.style.backdropFilter = 'blur(5px)'; // Dodanie lekkiego rozmycia tła
+                stickySms.style.paddingTop = '0.5rem'; // Mniejszy padding górny
+                stickySms.style.paddingBottom = '0.5rem'; // Mniejszy padding dolny
                 
                 // Dodaj przycisk zamykania
                 const closeButton = document.createElement('button');
