@@ -25,7 +25,7 @@ class SmsWebhookController extends Controller
             // Próbuj różnych metod odczytu danych
             $content = $request->getContent();
             Log::info('Webhook - Surowa zawartość:', ['content' => $content]);
-            
+
             // Parsuj JSON
             $payload = json_decode($content, true);
             Log::info('Webhook - Sparsowany JSON:', ['payload' => $payload]);
@@ -40,7 +40,7 @@ class SmsWebhookController extends Controller
             }
 
             $smsData = $payload['payload'];
-            
+
             // Utwórz rekord SMS
             $smsMessage = SmsMessage::create([
                 'device_id' => $payload['deviceId'] ?? null,
@@ -83,4 +83,4 @@ class SmsWebhookController extends Controller
         $messages = SmsMessage::orderBy('received_at', 'desc')->paginate(10);
         return view('sms-list', compact('messages'));
     }
-} 
+}

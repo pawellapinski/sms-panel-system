@@ -26,14 +26,13 @@ class SmsGatewayController extends Controller
         try {
             $content = $request->getContent();
             $data = json_decode($content, true) ?? $request->all();
-            
-            // Zapisz surowe dane do debugowania
-            $logFile = storage_path('logs/sms-raw.log');
-            file_put_contents($logFile, json_encode([
+
+            // Logowanie szczegółów SMS-a
+            Log::info('SMS Gateway - Odebrano nowy SMS', [
                 'time' => now()->format('Y-m-d H:i:s'),
                 'ip' => $request->ip(),
                 'data' => $data
-            ], JSON_PRETTY_PRINT) . "\n\n", FILE_APPEND);
+            ]);
 
             // Sprawdź czy mamy payload
             if (!isset($data['payload'])) {
@@ -43,7 +42,7 @@ class SmsGatewayController extends Controller
             } else {
                 $smsData = $data['payload'];
             }
-            
+
             $smsMessage = SmsMessage::create([
                 'device_id' => $data['deviceId'] ?? null,
                 'message_id' => $smsData['messageId'] ?? null,
@@ -78,4 +77,4 @@ class SmsGatewayController extends Controller
             ], 500);
         }
     }
-} 
+}
