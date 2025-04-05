@@ -3,9 +3,13 @@ ini_set('max_execution_time', 30); // standardowe 30 sekund
 
 // Wszystkie deklaracje use na początku pliku
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\SmsController;
+use App\Http\Controllers\LogController;
+use App\Http\Controllers\StatusController;
+use App\Http\Controllers\WebhookController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
-use App\Http\Controllers\SmsWebhookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
@@ -19,124 +23,35 @@ Route::get('/', function () {
 });
 
 // Trasy związane z dashboardem
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
-
-Route::get('/dashboard/sms-monitor', function () {
-    return view('dashboard.sms-monitor');
-})->middleware(['auth'])->name('dashboard.sms-monitor');
-
-Route::get('/dashboard/sms-list', function () {
-    return view('dashboard.sms-list');
-})->middleware(['auth'])->name('dashboard.sms-list');
-
-Route::get('/dashboard/logs', function () {
-    return view('dashboard.logs');
-})->middleware(['auth'])->name('dashboard.logs');
-
-// Endpoint do pobierania logów
-Route::get('/api/logs', function () {
-    $logPath = storage_path('logs/laravel.log');
+Route::middleware(['auth', 'verified'])->group(function () {
+    // Przekierowanie z /dashboard na /dashboard/sms-monitor
+    Route::get('/dashboard', function() {
+        return redirect()->route('dashboard.sms-monitor');
+    })->name('dashboard');
     
-    if (!file_exists($logPath)) {
-        return response('Plik logów nie istnieje.', 404);
-    }
-    
-    $logs = file_get_contents($logPath);
-    return response($logs);
+    Route::get('/dashboard/sms-monitor', [DashboardController::class, 'smsMonitor'])->name('dashboard.sms-monitor');
+    Route::get('/dashboard/sms-list', [DashboardController::class, 'smsList'])->name('dashboard.sms-list');
+    Route::get('/dashboard/logs', [DashboardController::class, 'logs'])->name('dashboard.logs');
+    Route::get('/dashboard/settings', [DashboardController::class, 'settings'])->name('dashboard.settings');
 });
 
-// Endpoint do czyszczenia logów
-Route::post('/api/logs/clear', function () {
-    $logPath = storage_path('logs/laravel.log');
-    
-    if (file_exists($logPath)) {
-        file_put_contents($logPath, '');
-        return response()->json(['status' => 'success', 'message' => 'Logi zostały wyczyszczone']);
-    }
-    
-    return response()->json(['status' => 'error', 'message' => 'Plik logów nie istnieje'], 404);
-})->middleware('auth');
+// Endpointy API związane z logami
+Route::get('/api/logs', [LogController::class, 'getLogs']);
+Route::get('/api/logs/stats', [LogController::class, 'getLogStats']);
+Route::post('/api/logs/clear', [LogController::class, 'clearLogs'])->middleware('auth');
 
-// Endpoint do usuwania SMS-a
-Route::delete('/api/sms/{id}', function ($id) {
-    try {
-        $sms = \App\Models\SmsMessage::findOrFail($id);
-        
-        // Zapisz informacje o SMS-ie przed usunięciem
-        $smsData = [
-            'id' => $sms->id,
-            'phone_number' => $sms->phone_number,
-            'message' => $sms->message,
-            'received_at' => $sms->received_at,
-        ];
-        
-        // Usuń SMS
-        $sms->delete();
-        
-        // Zaloguj usunięcie
-        Log::info('SMS został usunięty', $smsData);
-        
-        return response()->json(['status' => 'success', 'message' => 'SMS został usunięty']);
-    } catch (\Exception $e) {
-        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 404);
-    }
-})->middleware('auth');
+// Endpointy API związane z SMS-ami
+Route::delete('/api/sms/{id}', [SmsController::class, 'destroy'])->middleware('auth');
+Route::post('/api/sms/clear-all', [SmsController::class, 'clearAll'])->middleware('auth');
+Route::get('/api/last-sms', [SmsController::class, 'getLastSms']);
+Route::get('/api/sms-list', [SmsController::class, 'getSmsList']);
 
-// API do pobierania ostatniego SMS-a
-Route::get('/api/last-sms', function () {
-    $lastSms = \App\Models\SmsMessage::latest('received_at')->first();
-    
-    if ($lastSms) {
-        return response()->json([
-            'status' => 'success',
-            'sms' => $lastSms
-        ]);
-    } else {
-        return response()->json([
-            'status' => 'error',
-            'message' => 'Brak SMS-ów w bazie danych'
-        ]);
-    }
-});
+// Endpointy API związane ze statusem serwera
+Route::get('/api/server-status', [StatusController::class, 'getServerStatus']);
+Route::get('/status', [StatusController::class, 'getDetailedStatus']);
 
-// API do pobierania listy SMS-ów
-Route::get('/api/sms-list', function (Request $request) {
-    $limit = $request->input('limit', 100);
-    $page = $request->input('page', 1);
-    
-    $total = \App\Models\SmsMessage::count();
-    $totalPages = ceil($total / $limit);
-    
-    $messages = \App\Models\SmsMessage::orderBy('received_at', 'desc')
-                          ->skip(($page - 1) * $limit)
-                          ->take($limit)
-                          ->get();
-    
-    return response()->json([
-        'status' => 'success',
-        'messages' => $messages,
-        'total' => $total,
-        'totalPages' => $totalPages,
-        'currentPage' => $page
-    ]);
-});
-
-// Endpoint do sprawdzania statusu serwera
-Route::get('/api/server-status', function () {
-    return response()->json(['status' => 'online', 'timestamp' => now()]);
-});
-
-// Dodaję endpoint /status, który jest używany w widoku sms-monitor.blade.php
-Route::get('/status', function () {
-    return response()->json([
-        'status' => 'running',
-        'time' => now()->format('Y-m-d H:i:s'),
-        'server_ip' => request()->server('SERVER_ADDR'),
-        'client_ip' => request()->ip()
-    ]);
-});
+// Endpointy API związane z webhookami
+Route::post('/api/check-webhooks', [WebhookController::class, 'checkWebhooks'])->middleware('auth');
 
 // Trasy związane z profilem użytkownika
 Route::middleware('auth')->group(function () {

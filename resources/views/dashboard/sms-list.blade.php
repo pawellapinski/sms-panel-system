@@ -45,6 +45,15 @@
                     
                     <!-- Tabela SMS-ów -->
                     <div class="overflow-x-auto mt-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-bold text-indigo-800">Lista SMS-ów</h3>
+                            <button id="clear-all-button" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition duration-300 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                </svg>
+                                Wyczyść wszystko
+                            </button>
+                        </div>
                         <table class="min-w-full bg-white border border-gray-200 shadow-md rounded-lg overflow-hidden">
                             <thead class="bg-indigo-700 text-white">
                                 <tr>
@@ -101,7 +110,7 @@
         </div>
     </div>
 
-    <!-- Modal potwierdzenia usuwania SMS-a -->
+    <!-- Modal potwierdzenia usunięcia SMS-a -->
     <div id="delete-confirm-modal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center hidden">
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <h3 class="text-xl font-bold text-gray-900 mb-4">Potwierdź usunięcie SMS-a</h3>
@@ -135,6 +144,37 @@
                     Usuń
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal potwierdzenia usunięcia wszystkich SMS-ów -->
+    <div id="clear-all-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+            <div class="text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-red-600 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Potwierdź usunięcie</h3>
+                <p class="text-gray-700 mb-6">Czy na pewno chcesz usunąć wszystkie SMS-y z bazy danych? Ta operacja jest nieodwracalna.</p>
+                <div class="flex justify-center space-x-4">
+                    <button id="cancel-clear-all" class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 transition duration-300">
+                        Anuluj
+                    </button>
+                    <button id="confirm-clear-all" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition duration-300">
+                        Tak, usuń wszystko
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Powiadomienie -->
+    <div id="notification" class="fixed bottom-4 right-4 p-4 rounded-lg shadow-lg transform transition-transform duration-300 translate-y-full opacity-0">
+        <div class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span id="notification-message"></span>
         </div>
     </div>
 
@@ -454,7 +494,83 @@
                     closeDeleteModal();
                 }
             });
+            
+            // Obsługa przycisku "Wyczyść wszystko"
+            document.getElementById('clear-all-button').addEventListener('click', function() {
+                document.getElementById('clear-all-modal').classList.remove('hidden');
+            });
+
+            // Obsługa przycisku "Anuluj" w modalu
+            document.getElementById('cancel-clear-all').addEventListener('click', function() {
+                document.getElementById('clear-all-modal').classList.add('hidden');
+            });
+
+            // Obsługa przycisku "Tak, usuń wszystko" w modalu
+            document.getElementById('confirm-clear-all').addEventListener('click', function() {
+                clearAllSMS();
+            });
+
+            // Funkcja do usuwania wszystkich SMS-ów
+            async function clearAllSMS() {
+                try {
+                    const response = await fetch('/api/sms/clear-all', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        // Zamknij modal
+                        document.getElementById('clear-all-modal').classList.add('hidden');
+                        
+                        // Odśwież listę SMS-ów
+                        fetchSMSList(1);
+                        
+                        // Pokaż powiadomienie
+                        showNotification(`Usunięto wszystkie SMS-y (${data.count})`, 'success');
+                    } else {
+                        showNotification('Błąd podczas usuwania SMS-ów: ' + data.message, 'error');
+                    }
+                } catch (error) {
+                    console.error('Błąd usuwania wszystkich SMS-ów:', error);
+                    showNotification('Błąd podczas usuwania SMS-ów', 'error');
+                }
+            }
+
+            // Funkcja do wyświetlania powiadomień
+            function showNotification(message, type = 'info') {
+                const notification = document.getElementById('notification');
+                const notificationMessage = document.getElementById('notification-message');
+                
+                // Ustaw treść powiadomienia
+                notificationMessage.textContent = message;
+                
+                // Ustaw kolor powiadomienia w zależności od typu
+                notification.className = 'fixed bottom-4 right-4 p-4 rounded-lg shadow-lg transform transition-transform duration-300 translate-y-full opacity-0';
+                
+                if (type === 'success') {
+                    notification.classList.add('bg-green-100', 'text-green-800');
+                } else if (type === 'error') {
+                    notification.classList.add('bg-red-100', 'text-red-800');
+                } else {
+                    notification.classList.add('bg-blue-100', 'text-blue-800');
+                }
+                
+                // Pokaż powiadomienie
+                setTimeout(() => {
+                    notification.classList.remove('translate-y-full', 'opacity-0');
+                }, 100);
+                
+                // Ukryj powiadomienie po 3 sekundach
+                setTimeout(() => {
+                    notification.classList.add('translate-y-full', 'opacity-0');
+                }, 3000);
+            }
         });
     </script>
     @endpush
-</x-app-layout> 
+</x-app-layout>

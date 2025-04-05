@@ -12,10 +12,6 @@
 
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
-                    <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                        {{ __('Dashboard') }}
-                    </x-nav-link>
-                    
                     <!-- Dodaj ten link do monitora SMS -->
                     <x-nav-link :href="route('dashboard.sms-monitor')" :active="request()->routeIs('dashboard.sms-monitor')">
                         {{ __('Monitor SMS') }}
@@ -29,6 +25,11 @@
                     <!-- Dodaj nowy link do logów -->
                     <x-nav-link :href="route('dashboard.logs')" :active="request()->routeIs('dashboard.logs')">
                         {{ __('Logi') }}
+                    </x-nav-link>
+                    
+                    <!-- Dodaj nowy link do ustawień -->
+                    <x-nav-link :href="route('dashboard.settings')" :active="request()->routeIs('dashboard.settings')">
+                        {{ __('Ustawienia') }}
                     </x-nav-link>
                 </div>
             </div>
@@ -82,14 +83,12 @@
     <!-- Responsive Navigation Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
-            <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                {{ __('Dashboard') }}
-            </x-responsive-nav-link>
-            
+            <!-- Dodaj ten link do monitora SMS -->
             <x-responsive-nav-link :href="route('dashboard.sms-monitor')" :active="request()->routeIs('dashboard.sms-monitor')">
                 {{ __('Monitor SMS') }}
             </x-responsive-nav-link>
             
+            <!-- Dodaj nowy link do listy SMS -->
             <x-responsive-nav-link :href="route('dashboard.sms-list')" :active="request()->routeIs('dashboard.sms-list')">
                 {{ __('Lista SMS') }}
             </x-responsive-nav-link>
@@ -97,6 +96,11 @@
             <!-- Dodaj nowy link do logów -->
             <x-responsive-nav-link :href="route('dashboard.logs')" :active="request()->routeIs('dashboard.logs')">
                 {{ __('Logi') }}
+            </x-responsive-nav-link>
+            
+            <!-- Dodaj nowy link do ustawień -->
+            <x-responsive-nav-link :href="route('dashboard.settings')" :active="request()->routeIs('dashboard.settings')">
+                {{ __('Ustawienia') }}
             </x-responsive-nav-link>
         </div>
 

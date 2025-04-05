@@ -1,48 +1,45 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Monitor SMS') }}
-        </h2>
+        <h2 class="text-2xl font-bold mb-4 text-indigo-800">Monitor SMS</h2>
     </x-slot>
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 bg-white border-b border-gray-200">
-                    <!-- Status serwera i IP -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                        <div class="status p-3 bg-gray-100 rounded">
-                            <p class="text-lg">Status serwera: <span id="server-status" class="font-semibold">Sprawdzanie...</span></p>
-                        </div>
-
-                        <div class="status p-3 bg-gray-100 rounded">
-                            <p class="text-lg">IP serwera: <span id="server-ip" class="font-semibold">Sprawdzanie...</span></p>
-                        </div>
-                    </div>
-
-                    <!-- Przyciski -->
-                    <div class="flex mb-6">
-                        <button id="refresh-btn" class="refresh-btn px-6 py-3 bg-indigo-700 hover:bg-indigo-800 text-white font-bold rounded-lg border-2 border-indigo-900 shadow-lg">
-                            <span class="flex items-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                </svg>
-                                Odśwież
-                            </span>
+                    <!-- Przycisk odświeżania -->
+                    <div class="mb-4">
+                        <button id="refresh-button" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition duration-300 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                            </svg>
+                            Odśwież dane
                         </button>
                     </div>
 
-                    <!-- Ostatni SMS - z poprawioną czytelnością, w jednej kolumnie -->
+                    <!-- Ostatni SMS - z poprawioną czytelnością, w jednym kafelku z podziałem na dwie części -->
                     <div id="last-sms-container" class="relative">
                         <div id="last-sms" class="mb-6 p-4 bg-indigo-50 rounded-lg border border-indigo-200 shadow-md">
                             <h3 class="text-lg font-bold mb-3 text-indigo-800 border-b border-indigo-200 pb-2">Ostatni odebrany SMS:</h3>
                             <div id="last-sms-content" class="text-lg">Ładowanie...</div>
+                            <div id="server-status" class="mt-4 pt-3 text-sm text-gray-600 border-t border-indigo-200">
+                                <div class="flex flex-wrap gap-4">
+                                    <div class="flex items-center">
+                                        <span class="font-medium">Status serwera:</span>
+                                        <span id="server-status-value" class="ml-2 px-2 py-0.5 bg-green-100 text-green-800 rounded">Ładowanie...</span>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <span class="font-medium">IP serwera:</span>
+                                        <span id="server-ip" class="ml-2">Ładowanie...</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <!-- Placeholder dla sticky SMS - będzie widoczny tylko gdy oryginalny SMS jest przyklejony -->
                         <div id="last-sms-placeholder" class="hidden"></div>
                     </div>
 
-                    <!-- Lista SMS-ów - z poprawioną czytelnością, w jednej kolumnie -->
+                    <!-- Lista SMS-ów - z poprawioną czytelnością, w jednym kafelku z podziałem na dwie części -->
                     <div id="sms-list" class="mt-8">
                         <h3 class="text-xl font-bold mb-4 text-indigo-800 border-b border-indigo-200 pb-2">Lista SMS-ów:</h3>
                         <div id="sms-items" class="text-lg">Ładowanie...</div>
@@ -70,22 +67,43 @@
         let currentPage = 1;
         const messagesPerPage = 10;
 
-        // Sprawdź status serwera
+        // Funkcja do sprawdzania statusu serwera
         async function checkServerStatus() {
             try {
-                const response = await fetch(baseUrl + '/status');
+                const response = await fetch('/status');
                 const data = await response.json();
 
-                document.getElementById('server-status').textContent = data.status || 'Nieznany';
-                document.getElementById('server-status').className = data.status === 'running' ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold';
+                const statusElement = document.getElementById('server-status-value');
+                const ipElement = document.getElementById('server-ip');
 
-                const serverIp = data.server_ip || data.client_ip || 'Nieznany';
-                document.getElementById('server-ip').textContent = serverIp + ':' + (location.port || '80');
+                if (statusElement && ipElement) {
+                    if (data.status === 'running') {
+                        statusElement.textContent = 'running';
+                        statusElement.classList.remove('bg-red-100', 'text-red-800');
+                        statusElement.classList.add('bg-green-100', 'text-green-800');
+                    } else {
+                        statusElement.textContent = 'offline';
+                        statusElement.classList.remove('bg-green-100', 'text-green-800');
+                        statusElement.classList.add('bg-red-100', 'text-red-800');
+                    }
 
+                    // Ustawienie IP serwera (z fallbackiem do 127.0.0.1 jeśli nie jest dostępne)
+                    ipElement.textContent = data.server_ip || '127.0.0.1';
+                    
+                    console.log('Status serwera zaktualizowany:', data);
+                }
             } catch (error) {
-                document.getElementById('server-status').textContent = 'Błąd połączenia';
-                document.getElementById('server-status').className = 'text-red-600 font-semibold';
-                console.error('Błąd sprawdzania statusu:', error);
+                console.error('Błąd podczas sprawdzania statusu serwera:', error);
+                const statusElement = document.getElementById('server-status-value');
+                const ipElement = document.getElementById('server-ip');
+
+                if (statusElement && ipElement) {
+                    statusElement.textContent = 'offline';
+                    statusElement.classList.remove('bg-green-100', 'text-green-800');
+                    statusElement.classList.add('bg-red-100', 'text-red-800');
+
+                    ipElement.textContent = 'Niedostępne';
+                }
             }
         }
 
@@ -108,17 +126,13 @@
                         hour: '2-digit',
                         minute: '2-digit'
                     });
-                    
+
                     lastSmsContent.innerHTML = `
-                        <div class="bg-white p-4 rounded-lg shadow">
-                            <div class="space-y-2">
+                        <div class="bg-white p-4 rounded-lg shadow flex flex-col md:flex-row">
+                            <div class="md:w-1/5 space-y-2 md:pr-4 md:border-r md:border-gray-200">
                                 <div class="flex items-center">
                                     <span class="font-bold text-indigo-700 w-16">Od:</span>
                                     <span class="text-lg">${sms.phone_number}</span>
-                                </div>
-                                <div>
-                                    <span class="font-bold text-indigo-700 block mb-1">Treść:</span>
-                                    <div class="text-lg font-medium bg-yellow-50 p-3 rounded border border-yellow-200 break-words">${sms.message}</div>
                                 </div>
                                 <div class="flex items-center">
                                     <span class="font-bold text-indigo-700 w-16">Czas:</span>
@@ -129,9 +143,13 @@
                                     <span>${sms.id}</span>
                                 </div>
                             </div>
+                            <div class="md:w-4/5 mt-4 md:mt-0 md:pl-4">
+                                <span class="font-bold text-indigo-700 block mb-1">Treść:</span>
+                                <div class="text-lg font-medium bg-yellow-50 p-3 rounded border border-yellow-200 break-words">${sms.message}</div>
+                            </div>
                         </div>
                     `;
-                    
+
                     // Powiadom o załadowaniu nowego SMS-a
                     document.dispatchEvent(new CustomEvent('smsLoaded'));
                 } else {
@@ -172,17 +190,13 @@
                     hour: '2-digit',
                     minute: '2-digit'
                 });
-                
+
                 html += `
-                    <div class="sms-item p-4 mb-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm hover:shadow-md transition duration-300 max-w-3xl mx-auto">
-                        <div class="space-y-2">
+                    <div class="sms-item p-4 mb-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm hover:shadow-md transition duration-300 flex flex-col md:flex-row">
+                        <div class="md:w-1/5 space-y-2 md:pr-4 md:border-r md:border-gray-200">
                             <div class="flex items-center">
                                 <span class="font-bold text-blue-700 w-16">Od:</span>
                                 <span class="text-lg">${sms.phone_number}</span>
-                            </div>
-                            <div>
-                                <span class="font-bold text-blue-700 block mb-1">Treść:</span>
-                                <div class="text-lg font-medium bg-white p-3 rounded border border-blue-100 break-words">${sms.message}</div>
                             </div>
                             <div class="flex items-center">
                                 <span class="font-bold text-blue-700 w-16">Czas:</span>
@@ -192,6 +206,10 @@
                                 <span class="font-medium w-16">ID:</span>
                                 <span>${sms.id}</span>
                             </div>
+                        </div>
+                        <div class="md:w-4/5 mt-4 md:mt-0 md:pl-4">
+                            <span class="font-bold text-blue-700 block mb-1">Treść:</span>
+                            <div class="text-lg font-medium bg-blue-50 p-3 rounded border border-blue-100 break-words">${sms.message}</div>
                         </div>
                     </div>
                 `;
@@ -270,13 +288,12 @@
             },
 
             init: function() {
-                checkServerStatus();
                 getLastSMS();
                 this.loadAllMessages();
                 this.initStickyLastSms();
 
                 // Dodaj obsługę przycisku odświeżania
-                document.getElementById('refresh-btn').addEventListener('click', () => {
+                document.getElementById('refresh-button').addEventListener('click', () => {
                     this.loadAllMessages();
                 });
 
@@ -292,7 +309,7 @@
                 const lastSms = document.getElementById('last-sms');
                 const lastSmsContainer = document.getElementById('last-sms-container');
                 const lastSmsPlaceholder = document.getElementById('last-sms-placeholder');
-                
+
                 // Utwórz kopię SMS-a dla efektu sticky
                 const stickySms = lastSms.cloneNode(true);
                 stickySms.id = 'sticky-last-sms';
@@ -305,7 +322,7 @@
                 stickySms.style.backdropFilter = 'blur(5px)'; // Dodanie lekkiego rozmycia tła
                 stickySms.style.paddingTop = '0.5rem'; // Mniejszy padding górny
                 stickySms.style.paddingBottom = '0.5rem'; // Mniejszy padding dolny
-                
+
                 // Dodaj przycisk zamykania
                 const closeButton = document.createElement('button');
                 closeButton.id = 'close-sticky-sms';
@@ -315,7 +332,7 @@
                 closeButton.classList.add('w-8', 'h-8', 'flex', 'items-center', 'justify-center', 'font-bold', 'text-xl');
                 closeButton.classList.add('shadow-md', 'focus:outline-none', 'transition', 'duration-200');
                 closeButton.style.zIndex = '60';
-                
+
                 // Dodaj obsługę kliknięcia przycisku zamykania
                 closeButton.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -324,18 +341,18 @@
                     // Zapamiętaj, że użytkownik zamknął sticky SMS
                     this.stickySmsVisible = false;
                 });
-                
+
                 stickySms.appendChild(closeButton);
                 document.body.appendChild(stickySms);
-                
+
                 // Flaga określająca, czy sticky SMS powinien być widoczny
                 this.stickySmsVisible = true;
-                
+
                 // Obsługa przewijania strony
                 window.addEventListener('scroll', () => {
                     const containerRect = lastSmsContainer.getBoundingClientRect();
                     const smsRect = lastSms.getBoundingClientRect();
-                    
+
                     // Jeśli oryginalny SMS wychodzi poza górną krawędź ekranu i użytkownik nie zamknął sticky SMS
                     if (smsRect.bottom <= 0 && this.stickySmsVisible) {
                         // Pokaż sticky SMS
@@ -354,14 +371,14 @@
                         lastSms.classList.remove('invisible');
                     }
                 });
-                
+
                 // Aktualizuj zawartość sticky SMS-a po załadowaniu nowego SMS-a
                 document.addEventListener('smsLoaded', () => {
                     stickySms.innerHTML = lastSms.innerHTML;
-                    
+
                     // Dodaj ponownie przycisk zamykania, który został nadpisany
                     stickySms.appendChild(closeButton);
-                    
+
                     // Resetuj flagę widoczności przy nowym SMS-ie
                     this.stickySmsVisible = true;
                 });
@@ -416,6 +433,8 @@
             // Inicjalizuj aplikację
             window.smsApp = smsApp;
             smsApp.init();
+            checkServerStatus();
+            setInterval(checkServerStatus, 30000);
         });
     </script>
     @endpush

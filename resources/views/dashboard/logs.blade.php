@@ -69,7 +69,7 @@
                                 DEBUG
                             </button>
                             <button 
-                                class="filter-btn px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-full text-sm active" 
+                                class="filter-btn px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-full text-sm active font-bold" 
                                 data-filter="ALL"
                             >
                                 WSZYSTKIE
@@ -82,6 +82,53 @@
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" 
                                 placeholder="Wyszukaj w logach..."
                             >
+                        </div>
+                    </div>
+
+                    <!-- Statystyki logów -->
+                    <div id="log-stats" class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                            <h4 class="text-sm font-semibold text-gray-700 mb-2">Podsumowanie</h4>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600">Wszystkie wpisy:</span>
+                                <span id="stats-total" class="font-bold text-indigo-700">-</span>
+                            </div>
+                            <div class="flex justify-between items-center mt-1">
+                                <span class="text-gray-600">Rozmiar pliku:</span>
+                                <span id="stats-size" class="font-bold text-indigo-700">-</span>
+                            </div>
+                            <div class="flex justify-between items-center mt-1">
+                                <span class="text-gray-600">Ostatnia modyfikacja:</span>
+                                <span id="stats-last-modified" class="font-bold text-indigo-700">-</span>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                            <h4 class="text-sm font-semibold text-gray-700 mb-2">Poziomy logów</h4>
+                            <div class="flex justify-between items-center">
+                                <span class="text-blue-600">INFO:</span>
+                                <span id="stats-info" class="font-bold text-blue-700">-</span>
+                            </div>
+                            <div class="flex justify-between items-center mt-1">
+                                <span class="text-yellow-600">WARNING:</span>
+                                <span id="stats-warning" class="font-bold text-yellow-700">-</span>
+                            </div>
+                            <div class="flex justify-between items-center mt-1">
+                                <span class="text-red-600">ERROR:</span>
+                                <span id="stats-error" class="font-bold text-red-700">-</span>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                            <h4 class="text-sm font-semibold text-gray-700 mb-2">Inne poziomy</h4>
+                            <div class="flex justify-between items-center">
+                                <span class="text-purple-600">NOTICE:</span>
+                                <span id="stats-notice" class="font-bold text-purple-700">-</span>
+                            </div>
+                            <div class="flex justify-between items-center mt-1">
+                                <span class="text-green-600">DEBUG:</span>
+                                <span id="stats-debug" class="font-bold text-green-700">-</span>
+                            </div>
                         </div>
                     </div>
 
@@ -128,7 +175,20 @@
         // Załaduj logi
         async function loadLogs() {
             try {
-                const response = await fetch(`${baseUrl}/api/logs`);
+                // Pobierz statystyki logów
+                await loadLogStats();
+                
+                // Przygotuj parametry URL
+                const params = new URLSearchParams();
+                if (activeFilter !== 'ALL') {
+                    params.append('filter', activeFilter);
+                }
+                if (searchQuery) {
+                    params.append('search', searchQuery);
+                }
+                
+                const url = `${baseUrl}/api/logs${params.toString() ? '?' + params.toString() : ''}`;
+                const response = await fetch(url);
                 
                 if (!response.ok) {
                     throw new Error(`Błąd HTTP: ${response.status}`);
@@ -137,48 +197,56 @@
                 const data = await response.text();
                 const logsContent = document.getElementById('logs-content');
                 
-                if (data && data.trim() !== '') {
-                    // Podziel logi na linie
-                    const logLines = data.split('\n');
-                    
-                    // Zastosuj filtrowanie
-                    let filteredLogs = logLines;
-                    
-                    // Filtrowanie po typie logów
-                    if (activeFilter !== 'ALL') {
-                        filteredLogs = logLines.filter(line => line.includes(activeFilter));
-                    }
-                    
-                    // Filtrowanie po wyszukiwanej frazie
-                    if (searchQuery && searchQuery.trim() !== '') {
-                        const query = searchQuery.toLowerCase();
-                        filteredLogs = filteredLogs.filter(line => line.toLowerCase().includes(query));
-                    }
-                    
-                    // Kolorowanie logów
-                    let coloredLogs = filteredLogs.map(line => {
-                        if (line.includes('ERROR')) {
-                            return `<span class="text-red-400">${line}</span>`;
-                        } else if (line.includes('WARNING')) {
-                            return `<span class="text-yellow-400">${line}</span>`;
-                        } else if (line.includes('INFO')) {
-                            return `<span class="text-blue-300">${line}</span>`;
-                        } else if (line.includes('NOTICE')) {
-                            return `<span class="text-purple-300">${line}</span>`;
-                        } else if (line.includes('DEBUG')) {
-                            return `<span class="text-green-300">${line}</span>`;
-                        } else {
-                            return line;
-                        }
-                    });
-                    
-                    logsContent.innerHTML = coloredLogs.join('\n');
+                if (data.trim() === '') {
+                    logsContent.innerHTML = '<div class="text-gray-400 italic">Brak logów do wyświetlenia.</div>';
                 } else {
-                    logsContent.textContent = 'Brak dostępnych logów.';
+                    logsContent.innerHTML = data;
                 }
             } catch (error) {
-                document.getElementById('logs-content').textContent = `Błąd podczas ładowania logów: ${error.message}`;
+                document.getElementById('logs-content').innerHTML = `<div class="text-red-500">Błąd podczas ładowania logów: ${error.message}</div>`;
                 console.error('Błąd ładowania logów:', error);
+            }
+        }
+        
+        // Załaduj statystyki logów
+        async function loadLogStats() {
+            try {
+                const response = await fetch(`${baseUrl}/api/logs/stats`);
+                
+                if (!response.ok) {
+                    throw new Error(`Błąd HTTP: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    const stats = data.stats;
+                    
+                    // Aktualizuj statystyki na stronie
+                    document.getElementById('stats-total').textContent = stats.total;
+                    document.getElementById('stats-info').textContent = stats.info;
+                    document.getElementById('stats-error').textContent = stats.error;
+                    document.getElementById('stats-warning').textContent = stats.warning;
+                    document.getElementById('stats-notice').textContent = stats.notice;
+                    document.getElementById('stats-debug').textContent = stats.debug;
+                    
+                    // Formatuj rozmiar pliku
+                    const size = stats.size;
+                    let formattedSize = '';
+                    
+                    if (size < 1024) {
+                        formattedSize = `${size} B`;
+                    } else if (size < 1024 * 1024) {
+                        formattedSize = `${(size / 1024).toFixed(2)} KB`;
+                    } else {
+                        formattedSize = `${(size / (1024 * 1024)).toFixed(2)} MB`;
+                    }
+                    
+                    document.getElementById('stats-size').textContent = formattedSize;
+                    document.getElementById('stats-last-modified').textContent = stats.last_modified;
+                }
+            } catch (error) {
+                console.error('Błąd ładowania statystyk logów:', error);
             }
         }
         
@@ -290,4 +358,4 @@
         window.clearLogs = clearLogs;
     </script>
     @endpush
-</x-app-layout> 
+</x-app-layout>
