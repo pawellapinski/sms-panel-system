@@ -19,6 +19,20 @@
 
                     <!-- Ostatni SMS - z poprawioną czytelnością, w jednym kafelku z podziałem na dwie części -->
                     <div id="last-sms-container" class="relative">
+                        <!-- Nowy alert dla nowych SMS-ów -->
+                        <div id="new-sms-alert" class="hidden mb-4 p-3 bg-green-500 text-white rounded-lg shadow-md transition-all duration-500 transform translate-y-0 opacity-100 relative">
+                            <button id="close-alert" class="absolute top-0 right-0 p-2 text-white hover:text-gray-200 focus:outline-none">
+                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                            <div class="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                                <span class="font-bold">Nowy SMS!</span>
+                            </div>
+                        </div>
                         <div id="last-sms" class="mb-6 p-4 bg-indigo-50 rounded-lg border border-indigo-200 shadow-md">
                             <h3 class="text-lg font-bold mb-3 text-indigo-800 border-b border-indigo-200 pb-2">Ostatni odebrany SMS:</h3>
                             <div id="last-sms-content" class="text-lg">Ładowanie...</div>
@@ -280,6 +294,9 @@
 
         // Inicjalizacja aplikacji
         const smsApp = {
+            // Dodajemy zmienną do śledzenia ostatniego SMS ID
+            lastSmsId: null,
+            
             changePage: function(page) {
                 console.log(`Przechodzę do strony ${page}`);
                 renderSMSPage(page);
@@ -287,23 +304,79 @@
                 document.getElementById('sms-list').scrollIntoView({ behavior: 'smooth' });
             },
 
-            init: function() {
-                getLastSMS();
-                this.loadAllMessages();
-                this.initStickyLastSms();
-
-                // Dodaj obsługę przycisku odświeżania
-                document.getElementById('refresh-button').addEventListener('click', () => {
-                    this.loadAllMessages();
-                });
-
-                // Automatyczne odświeżanie co 30 sekund
-                setInterval(() => {
-                    getLastSMS();
-                    this.loadAllMessages();
-                }, 30000);
+            // Nowa metoda do ładowania wszystkich wiadomości
+            loadAllMessages: async function() {
+                try {
+                    // Najpierw spróbuj pobrać wszystkie wiadomości
+                    await this.fetchAllMessages();
+                } catch (error) {
+                    console.error('Błąd ładowania wiadomości:', error);
+                }
             },
 
+            // Metoda do pobierania wszystkich wiadomości
+            fetchAllMessages: async function() {
+                try {
+                    const response = await fetch(baseUrl + '/api/sms-list?limit=100');
+                    const data = await response.json();
+
+                    console.log('Otrzymano SMS-y:', data.messages ? data.messages.length : 0);
+
+                    if (data.messages && data.messages.length > 0) {
+                        allMessages = data.messages;
+                        const totalPages = Math.ceil(allMessages.length / messagesPerPage);
+                        console.log(`Liczba stron: ${totalPages} (${allMessages.length} SMS-ów / ${messagesPerPage} na stronę)`);
+
+                        renderSMSPage(currentPage);
+                    } else {
+                        allMessages = [];
+                        document.getElementById('sms-items').innerHTML = '<p class="p-4 bg-gray-100 rounded text-center">Brak SMS-ów.</p>';
+                        document.getElementById('pagination').innerHTML = `
+                            <div class="text-gray-500">Brak SMS-ów w systemie.</div>
+                        `;
+                    }
+
+                    // Zaktualizuj też ostatniego SMS-a
+                    getLastSMS();
+
+                } catch (error) {
+                    document.getElementById('sms-items').innerHTML = `<p class="p-4 bg-red-100 text-red-700 rounded text-center">Błąd: Nie udało się pobrać listy SMS-ów. ${error.message}</p>`;
+                    document.getElementById('pagination').innerHTML = '';
+                    console.error('Błąd pobierania listy SMS:', error);
+                    throw error;
+                }
+            },
+
+            // Metoda do pokazywania alertu o nowym SMS
+            showNewSmsAlert: function() {
+                const alert = document.getElementById('new-sms-alert');
+                const closeButton = document.getElementById('close-alert');
+                
+                // Dodaj obsługę kliknięcia przycisku zamknięcia
+                closeButton.onclick = () => {
+                    alert.classList.add('opacity-0', 'translate-y-[-20px]');
+                    
+                    // Po zakończeniu animacji ukryj element
+                    setTimeout(() => {
+                        alert.classList.add('hidden');
+                        alert.classList.remove('opacity-0', 'translate-y-[-20px]');
+                    }, 500);
+                };
+
+                alert.classList.remove('hidden');
+                
+                // Po 15 sekundach ukryj alert z animacją
+                setTimeout(() => {
+                    alert.classList.add('opacity-0', 'translate-y-[-20px]');
+                    
+                    // Po zakończeniu animacji ukryj element
+                    setTimeout(() => {
+                        alert.classList.add('hidden');
+                        alert.classList.remove('opacity-0', 'translate-y-[-20px]');
+                    }, 500);
+                }, 15000);
+            },
+            
             // Inicjalizacja efektu sticky dla ostatniego SMS-a
             initStickyLastSms: function() {
                 const lastSms = document.getElementById('last-sms');
@@ -384,48 +457,23 @@
                 });
             },
 
-            // Nowa metoda do ładowania wszystkich wiadomości
-            loadAllMessages: async function() {
-                try {
-                    // Najpierw spróbuj pobrać wszystkie wiadomości
-                    await this.fetchAllMessages();
-                } catch (error) {
-                    console.error('Błąd ładowania wiadomości:', error);
-                }
-            },
+            // Inicjalizuj aplikację
+            init: function() {
+                getLastSMS();
+                this.loadAllMessages();
+                this.initStickyLastSms();
 
-            // Metoda do pobierania wszystkich wiadomości
-            fetchAllMessages: async function() {
-                try {
-                    const response = await fetch(baseUrl + '/api/sms-list?limit=100');
-                    const data = await response.json();
+                // Dodaj obsługę przycisku odświeżania
+                document.getElementById('refresh-button').addEventListener('click', () => {
+                    this.loadAllMessages();
+                });
 
-                    console.log('Otrzymano SMS-y:', data.messages ? data.messages.length : 0);
-
-                    if (data.messages && data.messages.length > 0) {
-                        allMessages = data.messages;
-                        const totalPages = Math.ceil(allMessages.length / messagesPerPage);
-                        console.log(`Liczba stron: ${totalPages} (${allMessages.length} SMS-ów / ${messagesPerPage} na stronę)`);
-
-                        renderSMSPage(currentPage);
-                    } else {
-                        allMessages = [];
-                        document.getElementById('sms-items').innerHTML = '<p class="p-4 bg-gray-100 rounded text-center">Brak SMS-ów.</p>';
-                        document.getElementById('pagination').innerHTML = `
-                            <div class="text-gray-500">Brak SMS-ów w systemie.</div>
-                        `;
-                    }
-
-                    // Zaktualizuj też ostatniego SMS-a
+                // Automatyczne odświeżanie co 30 sekund
+                setInterval(() => {
                     getLastSMS();
-
-                } catch (error) {
-                    document.getElementById('sms-items').innerHTML = `<p class="p-4 bg-red-100 text-red-700 rounded text-center">Błąd: Nie udało się pobrać listy SMS-ów. ${error.message}</p>`;
-                    document.getElementById('pagination').innerHTML = '';
-                    console.error('Błąd pobierania listy SMS:', error);
-                    throw error;
-                }
-            }
+                    this.loadAllMessages();
+                }, 30000);
+            },
         };
 
         // Uruchom funkcje po załadowaniu strony
@@ -435,6 +483,29 @@
             smsApp.init();
             checkServerStatus();
             setInterval(checkServerStatus, 30000);
+            
+            // Dodaj obsługę zdarzenia smsLoaded
+            document.addEventListener('smsLoaded', async function() {
+                try {
+                    // Pobierz dane ostatniego SMS-a
+                    const response = await fetch(baseUrl + '/api/last-sms');
+                    const data = await response.json();
+                    
+                    if (data.status === 'success' && data.sms) {
+                        // Jeśli to pierwszy raz, tylko zapisz ID
+                        if (smsApp.lastSmsId === null) {
+                            smsApp.lastSmsId = data.sms.id;
+                        } 
+                        // Jeśli ID się zmieniło, mamy nowy SMS
+                        else if (smsApp.lastSmsId !== data.sms.id) {
+                            smsApp.lastSmsId = data.sms.id;
+                            smsApp.showNewSmsAlert();
+                        }
+                    }
+                } catch (error) {
+                    console.error('Błąd sprawdzania nowego SMS-a:', error);
+                }
+            });
         });
     </script>
     @endpush

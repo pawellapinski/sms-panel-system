@@ -8,6 +8,7 @@ use App\Http\Controllers\SmsController;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\StatusController;
 use App\Http\Controllers\WebhookController;
+use App\Http\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
@@ -52,6 +53,9 @@ Route::get('/status', [StatusController::class, 'getDetailedStatus']);
 
 // Endpointy API związane z webhookami
 Route::post('/api/check-webhooks', [WebhookController::class, 'checkWebhooks'])->middleware('auth');
+
+// Endpointy API związane z ustawieniami
+Route::post('/api/settings/save', [SettingsController::class, 'saveSmsSettings'])->middleware('auth');
 
 // Trasy związane z profilem użytkownika
 Route::middleware('auth')->group(function () {
