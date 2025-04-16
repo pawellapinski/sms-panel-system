@@ -90,54 +90,6 @@
                 </div>
             </div>
             
-            <!-- Sekcja - Konfiguracja Local Server -->
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
-                <div class="p-6 bg-white border-b border-gray-200">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Konfiguracja Local Server</h3>
-
-                    <!-- Status operacji konfiguracji -->
-                    <div id="config_status_message" class="hidden mb-4 p-4 rounded-md">
-                        <!-- Tutaj będzie wyświetlany status operacji -->
-                    </div>
-
-                    <!-- Formularz konfiguracji Local Server -->
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <label for="local_server_address" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Adres IP i port SMS Gateway:
-                                </label>
-                                <input type="text" id="local_server_address" value="{{ config('sms.local.server') }}"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                                    placeholder="np. 192.168.1.86:8089">
-                            </div>
-                            <div>
-                                <label for="local_username" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Nazwa użytkownika:
-                                </label>
-                                <input type="text" id="local_username" value="{{ config('sms.local.username') }}"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                                    placeholder="np. testowy">
-                            </div>
-                        </div>
-                        <div class="mb-4">
-                            <label for="local_password" class="block text-sm font-medium text-gray-700 mb-1">
-                                Hasło:
-                            </label>
-                            <input type="password" id="local_password" value="{{ config('sms.local.password') }}"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                                placeholder="np. admin123">
-                        </div>
-                        <div class="flex justify-end">
-                            <button id="save_local_config_btn"
-                                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-md">
-                                Zapisz ustawienia
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
             <!-- Informacja o rejestracji webhook przez curl -->
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 bg-white border-b border-gray-200">
@@ -286,72 +238,5 @@
                 }
             }
         });
-
-        // --- Funkcje dla sekcji - Konfiguracja Local Server ---
-        const saveLocalConfigBtn = document.getElementById('save_local_config_btn');
-        const configStatusMessage = document.getElementById('config_status_message');
-
-        // Zapisywanie ustawień Local Server
-        saveLocalConfigBtn.addEventListener('click', async function() {
-            const serverAddress = document.getElementById('local_server_address').value.trim();
-            const username = document.getElementById('local_username').value.trim();
-            const password = document.getElementById('local_password').value.trim();
-
-            // Sprawdź czy wszystkie pola są wypełnione
-            if (!serverAddress || !username || !password) {
-                showConfigStatus('error', 'Wypełnij wszystkie pola formularza');
-                return;
-            }
-
-            // Pokaż status "Zapisywanie..."
-            showConfigStatus('loading', 'Zapisywanie ustawień Local Server...');
-
-            try {
-                // Wywołaj API do zapisania ustawień
-                const response = await fetch('{{ url("/api/settings/save") }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    },
-                    body: JSON.stringify({
-                        local_server_address: serverAddress,
-                        local_username: username,
-                        local_password: password
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data.status === 'success') {
-                    showConfigStatus('success', 'Ustawienia Local Server zostały zapisane pomyślnie!');
-                } else {
-                    showConfigStatus('error', data.message || 'Wystąpił błąd podczas zapisywania ustawień');
-                }
-            } catch (error) {
-                console.error('Błąd:', error);
-                showConfigStatus('error', 'Wystąpił błąd podczas komunikacji z serwerem');
-            }
-        });
-
-        // Funkcja do wyświetlania statusu konfiguracji
-        function showConfigStatus(type, message) {
-            configStatusMessage.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800', 'bg-yellow-100', 'text-yellow-800');
-
-            switch (type) {
-                case 'success':
-                    configStatusMessage.classList.add('bg-green-100', 'text-green-800');
-                    break;
-                case 'error':
-                    configStatusMessage.classList.add('bg-red-100', 'text-red-800');
-                    break;
-                case 'loading':
-                    configStatusMessage.classList.add('bg-yellow-100', 'text-yellow-800');
-                    break;
-            }
-
-            configStatusMessage.textContent = message;
-        }
-    });
-</script>
+    </script>
 </x-app-layout>

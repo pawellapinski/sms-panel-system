@@ -36,7 +36,7 @@ class WebhookController extends Controller
         try {
             // Wykonaj żądanie do serwera SMS Gateway
             $response = Http::withBasicAuth($username, $password)
-                ->get($ipAddress . '/webhook');
+                ->get($ipAddress . '/webhooks');
             
             // Sprawdź czy żądanie było udane
             if ($response->successful()) {
